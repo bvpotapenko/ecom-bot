@@ -1,0 +1,19 @@
+[project]
+name = "ecom-bot"
+version = "0.1.0"
+description = "a bot for ecom"
+authors = [
+    {name = "BD",email = "BD@my_mac.local"}
+]
+readme = "README.md"
+requires-python = ">=3.12,<4"
+dependencies = [
+    "langchain-google-genai (>=2.1.10,<3.0.0)",
+    "python-dotenv (>=1.1.1,<2.0.0)",
+    "langchain (>=0.3.27,<0.4.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

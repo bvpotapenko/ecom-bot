@@ -1,0 +1,6 @@
+{"timestamp": "2025-09-05 23:14:36", "level": "INFO", "greetings": "At your service. Type:\n /order <order_number> to get order status\n 'exit', 'quit', 'bye', 'q', 'stop' or 'end' to quit\n 'clr' to change topic\n Or ask any question about order processing."}
+{"timestamp": "2025-09-05 23:14:41", "level": "INFO", "user_input": "/order 12345"}
+{"timestamp": "2025-09-05 23:14:46", "level": "INFO", "bot_reply": "Ваш заказ 12345 сейчас в пути. Доставка осуществляется ShoplyExpress, ожидается через 2 дня."}
+{"timestamp": "2025-09-05 23:15:04", "level": "INFO", "user_input": "q"}
+{"timestamp": "2025-09-05 23:15:04", "level": "INFO", "bot_reply": "Goodbye! Have a nice day!"}
+{"timestamp": "2025-09-05 23:15:04", "level": "INFO", "bot_reply": "Total tokens used during the session", "total_tokens": 409}
