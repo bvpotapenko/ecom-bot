@@ -1,0 +1,1 @@
+{"timestamp": "2025-09-06 12:58:46", "level": "ERROR", "error": "Unexpected error: Your location is not supported by google-generativeai at the moment. Try to use ChatVertexAI LLM from langchain_google_vertexai."}

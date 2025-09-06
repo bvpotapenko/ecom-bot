@@ -210,3 +210,6 @@ __marimo__/
 logs/*.jsonl
 logs/*.log
 logs/*.csv
+
+# Mac
+*.DS_Store
