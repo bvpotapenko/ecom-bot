@@ -1,9 +1,0 @@
-{"timestamp": "2025-09-05 23:07:46", "level": "INFO", "greetings": "At your service. Type:\n /order <order_number> to get order status\n 'exit', 'quit', 'bye', 'q', 'stop' or 'end' to quit\n 'clr' to change topic\n Or ask any question about order processing."}
-{"timestamp": "2025-09-05 23:07:51", "level": "INFO", "user_input": "/order 12345"}
-{"timestamp": "2025-09-05 23:07:58", "level": "INFO", "bot_reply": "I don't have info on that."}
-{"timestamp": "2025-09-05 23:08:57", "level": "INFO", "user_input": "Как оформить возврат?"}
-{"timestamp": "2025-09-05 23:09:00", "level": "INFO", "bot_reply": "Вы можете оформить возврат в течение 14 дней. Пожалуйста, сохраните чек и упаковку.", "usage": {"input_tokens": 381, "output_tokens": 23, "total_tokens": 404, "input_token_details": {"cache_read": 0}}}
-{"timestamp": "2025-09-05 23:09:13", "level": "INFO", "user_input": "Как изменить адрес после заказа?"}
-{"timestamp": "2025-09-05 23:09:16", "level": "INFO", "bot_reply": "Напишите нам в чат как можно скорее — если заказ не отгружен, мы поменяем адрес.", "usage": {"input_tokens": 416, "output_tokens": 24, "total_tokens": 440, "input_token_details": {"cache_read": 0}}}
-{"timestamp": "2025-09-05 23:14:33", "level": "INFO", "bot_reply": "Goodbye! Have a nice day!"}
-{"timestamp": "2025-09-05 23:14:33", "level": "INFO", "bot_reply": "Total tokens used during the session", "total_tokens": 1213}

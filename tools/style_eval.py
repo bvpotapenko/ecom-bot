@@ -10,7 +10,27 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 import yaml
-from app import (
+import sys
+
+
+# ===========================================================
+# 1. Bot Response Schema (forces consistent model output)
+# ===========================================================
+class BotResponse(BaseModel):
+    answer: str = Field(description="Short answer")
+    tone: str = Field(description="Test: does tone match (yes/no) + short explanation")
+    actions: List[str] = Field(
+        description="A list of following steps for the client (0–3 items)"
+    )
+    # ---- Output Parser to BotResponse ----
+parser = PydanticOutputParser(pydantic_object=BotResponse)
+# response is a ChatMessage; parse into BotResponse object
+bot_resp = parser.parse(response.content)
+
+# Add parent directory to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from src.app import (
     run_chat_scenario,
     ConversationChain,
     load_system_prompt,

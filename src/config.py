@@ -9,9 +9,9 @@ MAX_OUTPUT_TOKENS = 1500  # Max tokens per LLM response
 THINKING_BUDGET = 0  # Max tokens for LLM internal "thinking"
 
 SYSTEM_INSTRUCTION_TEMPLATE = (
-    "You are a support bot for {brand}. Be polite, concise. Use only this FAQ: {faq}. "
+    "You are a support bot for {brand}. Be polite, concise. Use only this FAQ: {faq} or conversation history about the user's order and other questions to answer user's questions. "
     "For order JSONs provided, summarize the status into plain, customer-friendly language. "
-    "If neither FAQ nor order JSON is relevant, say 'I don't have info on that.'"
+    "If neither FAQ, conversation history with the user, nor order JSON is relevant, say 'I don't have info on that.'"
 )
 
 
