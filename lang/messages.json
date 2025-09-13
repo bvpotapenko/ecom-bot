@@ -1,5 +1,4 @@
 {
-  "greetings": "At your service. Type:\n /order <order_number> to get order status\n 'exit', 'quit', 'bye', 'q', 'stop' or 'end' to quit\n 'clr' to change topic\n Or ask any question about order processing.",
   "goodbye": "Goodbye! Have a nice day!",
   "clear": "Conversation cleared.",
   "error_order": "Sorry, I couldn’t process your order request.",

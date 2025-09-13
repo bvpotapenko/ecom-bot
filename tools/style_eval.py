@@ -1,167 +1,106 @@
-import os
 import json
+import pathlib
 import re
 import statistics
-import logging
 from typing import List
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
-import yaml
-import sys
+from langchain_google_genai import ChatGoogleGenerativeAI
+from src.app import load_system_prompt, setup_langgraph, process_message
+from src import config
 
+# Setup paths and environment
+BASE = pathlib.Path(__file__).parent.parent
+load_dotenv(BASE / ".env", override=True)
+REPORTS = BASE / "reports"
+REPORTS.mkdir(exist_ok=True)
 
-# ===========================================================
-# 1. Bot Response Schema (forces consistent model output)
-# ===========================================================
-class BotResponse(BaseModel):
-    answer: str = Field(description="Short answer")
-    tone: str = Field(description="Test: does tone match (yes/no) + short explanation")
-    actions: List[str] = Field(
-        description="A list of following steps for the client (0–3 items)"
-    )
-    # ---- Output Parser to BotResponse ----
-parser = PydanticOutputParser(pydantic_object=BotResponse)
-# response is a ChatMessage; parse into BotResponse object
-bot_resp = parser.parse(response.content)
-
-# Add parent directory to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src.app import (
-    run_chat_scenario,
-    ConversationChain,
-    load_system_prompt,
-    setup_gemini,
-    setup_logging,
-)
-
-BASE = os.path.dirname(os.path.abspath(__file__)) + "/.."
-load_dotenv(BASE + "/.env")
-REPORTS = os.path.join(BASE, "reports")
-os.makedirs(REPORTS, exist_ok=True)
-
-# Setup logging
-log_file = setup_logging(logging.INFO)  # Use same logging setup as app.py
-logger = logging.getLogger()
-
-# Load style
-with open(os.path.join(BASE, "data/style_guide.yaml"), "r", encoding="utf-8") as f:
-    STYLE = yaml.safe_load(f)
-
-
-# Rule checks
+# Simple rule-based checks
 def rule_checks(text: str) -> int:
     score = 100
-
-    with open(os.path.join(BASE, "data/style_guide.yaml"), "r", encoding="UTF-8") as f:
-        style = yaml.safe_load(f)
-
-    if re.search(r"[\U0001F300-\U0001FAFF]", text):  # Emojis
+    if re.search(r"[\U0001F300-\U0001FAFF]", text):  # No emojis
         score -= 20
-    if "!!!" in text:  # Excessive !!!
+    if "!!!" in text:  # No excessive exclamation
         score -= 10
-    if len(text) > 600:  # Too long
+    if len(text) > 600:  # Length limit
         score -= 10
-
-    # Additional checks from style['tone']['avoid']
-    avoid_list = style["tone"]["avoid"]
-    if "канцелярит: согласно вышеизложенному, осуществите" in avoid_list:
-        forbidden_phrases = [
-            "согласно вышеизложенному",
-            "осуществите",
-            "в соответствии с",
-        ]
-        for phrase in forbidden_phrases:
-            if phrase.lower() in text.lower():
-                score -= 15
-
     return max(score, 0)
 
-
-# LLM grade model
+# LLM-based evaluation
 class Grade(BaseModel):
-    score: int = Field(ge=0, le=100)
+    score: int = Field(..., ge=0, le=100)
     notes: str
 
+def setup_llm_grade_prompt():
+    brand_name = config.SYSTEM_INSTRUCTION_TEMPLATE.split("{brand}")[0].strip()
+    tone_persona = config.TONE.get("persona", "professional, friendly")
+    tone_avoid = config.TONE.get("avoid", ["informal slang", "aggressive tone"])
+    tone_must_include = config.TONE.get("must_include", ["clear", "polite"])
+    
+    return ChatPromptTemplate.from_messages([
+        ("system", f"You are a strict reviewer ensuring responses align with the {brand_name} brand voice."),
+        ("system", f"Tone: {tone_persona}. Avoid: {', '.join(tone_avoid)}. "
+                   f"Must include: {', '.join(tone_must_include)}."),
+        ("human", "Assistant response:\n{answer}\n\nProvide an integer score (0-100) and brief notes explaining the score.")
+    ])
 
-setup_gemini()
-LLM = ChatGoogleGenerativeAI(
-    model=os.environ.get("MODEL_NAME", "gemini-2.5-flash"), temperature=0
-)
+def llm_grade(text: str, llm) -> Grade:
+    parser = llm.with_structured_output(Grade)
+    prompt = setup_llm_grade_prompt()
+    return (prompt | parser).invoke({"answer": text})
 
-GRADE_PROMPT = ChatPromptTemplate.from_messages(
-    [
-        ("system", f"Ты — строгий ревьюер соответствия голосу бренда {STYLE['brand']}"),
-        (
-            "system",
-            f"Тон: {STYLE['tone']['persona']}. Избегай: {', '.join(STYLE['tone']['avoid'])}. "
-            f"Обязательно: {', '.join(STYLE['tone']['must_include'])}.",
-        ),
-        (
-            "human",
-            "Ответ ассистента:\n{answer}\n\nДай целочисленный score 0..100 и краткие заметки почему.",
-        ),
-    ]
-)
+def eval_batch(prompts: List[str], logger) -> dict:
+    # Initialize LangGraph and system prompt
+    system_prompt = load_system_prompt()
+    graph = setup_langgraph(system_prompt)
+    thread_id = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    graph_config = {"configurable": {"thread_id": thread_id}}
+    
+    # Initialize LLM for grading
+    llm = ChatGoogleGenerativeAI(
+        model=os.environ.get("MODEL_NAME", "gemini-2.5-flash"),
+        temperature=config.TEMPERATURE,
+        max_output_tokens=config.MAX_OUTPUT_TOKENS,
+        timeout=config.REQUEST_TIMEOUT,
+    )
 
-
-def llm_grade(text: str) -> Grade:
-    chain = GRADE_PROMPT | LLM | JsonOutputParser(pydantic_object=Grade)
-    return chain.invoke({"answer": text})
-
-
-# Setup conversation for eval
-llm = ChatGoogleGenerativeAI(model=os.environ.get("MODEL_NAME"))
-memory = ConversationChain(llm=llm).memory  # Reuse from app
-conversation = ConversationChain(llm=llm, memory=memory)
-
-
-def eval_batch(scenarios: List[List[str]]) -> dict:  # Scenarios are multi-turn lists
     results = []
-    for scenario in scenarios:
-        replies, _ = run_chat_scenario(
-            conversation, scenario, logging.getLogger(), reset_memory=True
-        )
-        for reply in replies:
-            # Extract 'answer' from formatted reply (assume first part is answer)
-            answer = reply.split("\nTone check:")[0].strip()
-            rule = rule_checks(answer)
-            g = llm_grade(answer)
-            final = int(0.4 * rule + 0.6 * g.score)
-            results.append(
-                {
-                    "scenario": scenario,
-                    "answer": answer,
-                    "rule_score": rule,
-                    "llm_score": g.score,
-                    "final": final,
-                    "notes": g.notes,
-                }
-            )
+    for prompt in prompts:
+        # Get bot response
+        reply, tokens = process_message(graph, graph_config, prompt, logger)
+        
+        # Evaluate
+        rule_score = rule_checks(reply)
+        llm_score = llm_grade(reply, llm)
+        final_score = int(0.4 * rule_score + 0.6 * llm_score.score)
+        
+        results.append({
+            "prompt": prompt,
+            "answer": reply,
+            "rule_score": rule_score,
+            "llm_score": llm_score.score,
+            "final": final_score,
+            "notes": llm_score.notes,
+            "tokens": tokens
+        })
+    
     mean_final = round(statistics.mean(r["final"] for r in results), 2)
-    if mean_final < 80:
-        print("Warning: Mean score below 80!")
     out = {"mean_final": mean_final, "items": results}
-    with open(os.path.join(REPORTS, "style_eval.json"), "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False, indent=2)
+    
+    # Save report
+    report_path = REPORTS / "style_eval.json"
+    report_path.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    
     return out
 
-
 if __name__ == "__main__":
-    # Load eval prompts as single-turn scenarios; for multi-turn, group them
-    eval_prompts = [
-        line.strip()
-        for line in open(
-            os.path.join(BASE, "data/eval_prompts.txt"), "r", encoding="utf-8"
-        ).readlines()
-        if line.strip()
-    ]
-    scenarios = [
-        [p] for p in eval_prompts
-    ]  # Single-turn; adjust for multi<<<<<<<<<<<<<!!!!!!!!!!!!
-    report = eval_batch(scenarios)
-    print("Средний балл:", report["mean_final"])
-    print("Отчёт:", os.path.join(REPORTS, "style_eval.json"))
+    import logging
+    from src.app import setup_logging
+    args = setup_logging(logging.INFO)
+    logger = logging.getLogger()
+    
+    eval_prompts = (BASE / "data/eval_prompts.txt").read_text(encoding="utf-8").strip().splitlines()
+    report = eval_batch(eval_prompts, logger)
+    print("Mean score:", report["mean_final"])
+    print("Report saved:", REPORTS / "style_eval.json")
