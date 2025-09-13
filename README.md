@@ -1,9 +1,3 @@
-Here’s a good **README.md** draft for your GitHub repo, written to match the code you posted and the way you run it.
-It explains what the project does, how to install/run it, and how to use the style evaluator.
-You can copy-paste this into your repo and tweak branding/wording as needed.
-
----
-
 # Shoply Support Bot
 
 A conversational support bot built with **LangGraph** + **Gemini (Google Generative AI)**.
