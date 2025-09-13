@@ -31,8 +31,8 @@ from pydantic import BaseModel, Field
 import yaml
 
 # Local modules
-import config
-from order_utils import load_orders, get_order_prompt
+from . import config
+from .order_utils import load_orders, get_order_prompt
 
 load_dotenv()
 
@@ -221,7 +221,6 @@ def load_system_prompt() -> str:
         "}", "}}"
     )  # Otherwise "{q}" and similar JSON injections are considered as parameters
 
-    print(system_prompt)
     return system_prompt, parser
 
 
@@ -385,7 +384,7 @@ def process_message(
 # 5. Special Commands
 # ===========================================================
 def handle_special_command(
-    user_input: str, graph: StateGraph, graph_config: dict, logger: logging.Logger
+    graph: StateGraph, graph_config: dict, user_input: str, logger: logging.Logger
 ) -> Optional[Tuple[str, int, bool, Optional[dict]]]:
     """
     Handle short CLI-style special commands.
@@ -481,7 +480,7 @@ def chat_loop(graph: StateGraph, initial_config: dict, logger: logging.Logger) -
             continue
 
         special_result = handle_special_command(
-            user_input, graph, current_config, logger
+            graph, current_config, user_input, logger
         )
         if special_result:
             bot_reply, tokens, exit_flag, new_config = special_result

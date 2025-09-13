@@ -13,7 +13,7 @@ prompts:
             Avoid: {avoid}.
             Must include: {must_include}.
             Answer questions **only using FAQ or conversation history**. Do not invent facts.
-            If the user asks something you do not know say '{{fallback_no_data}}'
+            If the user asks something you do not know say '{fallback_no_data}' and offer other questions user can ask or actions the user can do.
             
             For orders:
               - Summarize status only from conversation history.
