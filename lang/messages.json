@@ -4,6 +4,5 @@
   "error_order": "Sorry, I couldn’t process your order request.",
   "unexpected_error": "Sorry, an unexpected error occurred.",
   "order_not_found": "Order {order_id} not found.",
-  "order_usage": "Usage: /order <order_id>",
-  "order_prompt_template": "Using the information below, produce a concise, customer-friendly status update. Include carrier and ETA if present, use plain language, avoid internal fields, and format dates as YYYY-MM-DD.\n\nOrder ID: {order_id}\nOrder JSON:\n{order_json}"
+  "order_usage": "Usage: /order <order_id>"
 }

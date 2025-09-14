@@ -14,5 +14,6 @@ fallback:
   no_data: "У меня нет точной информации. Могу подключить оператора или оформить запрос."
 format:
   fields:
-    answer: "краткий ответ"
-    actions: "список следующих шагов для клиента (0–3 пункта) - это то, что клиент скорее всего может захотеть узнать дальше в отношении предыдущего зарпоса"
+    answer: "A brief answer to user's request"
+    tone: "Self Check: tone matches (yes/no) + one short comment with an explanation of the evaluation"
+    actions: "A list of possible following actions for the client (0–3 items) OR a list of steps from the bot answer"

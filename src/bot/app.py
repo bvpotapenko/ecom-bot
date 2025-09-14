@@ -32,7 +32,7 @@ import yaml
 
 # Local modules
 from . import config
-from .order_utils import load_orders, get_order_prompt
+from .order_utils import load_orders, get_order_details
 
 load_dotenv()
 
@@ -42,17 +42,17 @@ load_dotenv()
 # ===========================================================
 class PossibleUserActionItem(BaseModel):
     possible_user_action: str = Field(
-        description="One of the following action a user may want to do or ask about basing on previous questions and information in FAQ"
+        description="A step from bot's response, OR One of the following action a user may want to do or ask about basing on previous questions and information in FAQ"
     )
 
 
 class FormattedReply(BaseModel):
     answer: str = Field(description="A brief reply")
-    # tone: str = Field(
-    #     description="Control: tone matches (yes/no) + one short comment with an explanation of the evaluation"
-    # )
+    tone: str = Field(
+        description="Self Check: tone matches (yes/no) + one short comment with an explanation of the evaluation"
+    )
     actions: List[PossibleUserActionItem] = Field(
-        description="A list of possible following actions for the client (0–3 items)"
+        description="A list of possible following actions for the client (0–3 items) OR a list of steps from the bot answer"
     )
 
 
@@ -143,6 +143,23 @@ def setup_gemini() -> None:
         raise RuntimeError("GOOGLE_API_KEY is not set.")
 
 
+def get_prompt_tmp(prompt_template_name: str) -> str:
+    """
+    Returns a string template of a named prompt from the YAML file.
+    """
+    with open("data/prompts.yaml", "r", encoding="utf-8") as f:
+        prompts = yaml.safe_load(f)
+
+    # Prompt versioning
+    current_version = prompts["prompts"]["my_chain"]["current"]
+    version = os.getenv("PROMPT_VERSION", current_version)
+    prompt_template_str = prompts["prompts"]["my_chain"]["versions"][version][
+        prompt_template_name
+    ]
+
+    return prompt_template_str
+
+
 def load_few_shots() -> List[Tuple[str, str]]:
     """
     Load few-shot examples from JSONL.
@@ -161,13 +178,7 @@ def load_system_prompt() -> str:
     """
     Load YAML config, determine prompt version, build system prompt with persona, style, FAQ, fallback.
     """
-    with open("data/prompts.yaml", "r", encoding="utf-8") as f:
-        prompts = yaml.safe_load(f)
-
-    # Prompt versioning
-    current_version = prompts["prompts"]["my_chain"]["current"]
-    version = os.getenv("PROMPT_VERSION", current_version)
-    system_base = prompts["prompts"]["my_chain"]["versions"][version]["system"]
+    system_base = get_prompt_tmp("system")
 
     # Brand, persona, style
     with open("data/style_guide.yaml", "r", encoding="utf-8") as f:
@@ -182,7 +193,7 @@ def load_system_prompt() -> str:
     use_bullets = str(tone["bullets"]).lower()
     avoid = ", ".join(tone["avoid"])
     must_include = ", ".join(tone["must_include"])
-    # Generate a string like: "answer (short answer), actions (list of actions ...)"
+    # Generate a string like: "answer (short answer), tone, actions (list of actions ...)"
     fields_in_answer = ", ".join(
         f"{field} ({desc})" for field, desc in style_guide["format"]["fields"].items()
     )
@@ -222,21 +233,6 @@ def load_system_prompt() -> str:
     )  # Otherwise "{q}" and similar JSON injections are considered as parameters
 
     return system_prompt, parser
-
-
-def load_greetings() -> str:
-    """
-    Returns the initial message that is shown to a user
-    """
-    with open("data/prompts.yaml", "r", encoding="utf-8") as f:
-        prompts = yaml.safe_load(f)
-
-    # Prompt versioning
-    current_version = prompts["prompts"]["my_chain"]["current"]
-    version = os.getenv("PROMPT_VERSION", current_version)
-    greetings = prompts["prompts"]["my_chain"]["versions"][version]["greetings"]
-
-    return greetings
 
 
 def get_new_thread_id() -> str:
@@ -311,6 +307,7 @@ def format_reply(resp: Dict) -> str:
 
     return (
         f'    answer: "{resp["answer"]}"\n'
+        f'    tone: "{resp["tone"]}"\n'
         + f"    actions: "
         + "".join(
             [
@@ -423,9 +420,12 @@ def handle_special_command(
         )  # returns dict[str, Any] — mapping order_id -> order dict
         order = orders.get(order_id)
         if order:
-            order_prompt = get_order_prompt(
+            order_details_json_esc = get_order_details(
                 order_id, order
-            )  # returns str (prompt text)
+            )  # returns escaped json
+            order_prompt = get_prompt_tmp("order_prompt_template").format(
+                order_id=order_id, order_json=order_details_json_esc
+            )
             bot_reply, tokens = process_message(
                 graph, graph_config, order_prompt, logger
             )
@@ -460,7 +460,7 @@ def chat_loop(graph: StateGraph, initial_config: dict, logger: logging.Logger) -
     current_config = initial_config
     total_tokens_count = 0
 
-    greetings = load_greetings()
+    greetings = get_prompt_tmp("greetings")
     logger.info({"greetings": greetings})
     print(greetings)
 
@@ -495,7 +495,7 @@ def chat_loop(graph: StateGraph, initial_config: dict, logger: logging.Logger) -
 
         bot_reply, tokens = process_message(graph, current_config, user_input, logger)
         total_tokens_count += tokens
-        print("\n\nBot: \n" + bot_reply)
+        print("\n\nBot: \n" + bot_reply + "\n\n")
 
 
 # ===========================================================

@@ -1,8 +1,8 @@
 prompts:
   my_chain:
-    current: v2
+    current: v1
     versions:
-      v2:
+      v1:
         system: |
             You are a {persona} support bot for {brand}, you can speak any language.
             Today is {current_date}, {current_day}.
@@ -24,32 +24,24 @@ prompts:
             Use this FAQ or conversation history to answer:
             {faq}
 
-
         greetings: |
-          Welcome, how can I help you today? 
-          Type:
-            /order <order_number> to get order status
-            'exit', 'quit', 'bye', 'q', 'stop' or 'end' to quit
-            'clr' to change topic\n Or ask any question about order processing."
-        user: |
-          Question: {question}
-          Context: {context}
+          Welcome! How can I addres to you?
+          And how can I help you today? 
+          
+          These are some commands, just type:
+            /order <order_number> - to get order status
+            'exit', 'bye', 'q', 'end' - to quit
+            'clr' - to change topic 
+            
+            Or you may ask any question about order processing."
 
-      v1: # More stricter version
-        system: |
-          You are a {persona} support bot for {brand}. Follow style: Max sentences: {sentences_max}. 
-          Use bullets: {use_bullets}. Avoid: {avoid}. 
-          Must include: {must_include}.
-          Use only this FAQ: {faq} or conversation history to answer questions.
-          For orders, summarize status plainly.
-          If no info, say '{fallback_no_data}'.
-          Always output JSON: {format_instructions}
-        greetings: |
-          Welcome, how can I help you today? 
-          Type:
-            /order <order_number> to get order status
-            'exit', 'quit', 'bye', 'q', 'stop' or 'end' to quit
-            'clr' to change topic\n Or ask any question about order processing."
+        order_prompt_template: |
+          Using the information below, produce a concise, customer-friendly status update. 
+          Include carrier and ETA if present, use plain language, avoid internal fields, and format dates as YYYY-MM-DD.
+          Reply in the language user used in previous request.
+          Order ID: {order_id}
+          Order JSON:\n{order_json}
+
         user: |
           Question: {question}
           Context: {context}

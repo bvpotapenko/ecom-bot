@@ -1,4 +1,6 @@
 import json
+import yaml
+from typing import Tuple
 from . import config
 
 
@@ -7,15 +9,14 @@ def load_orders():
         return json.load(f)
 
 
-def get_order_prompt(order_id: str, order: dict) -> str:
+def get_order_details(order_id: str, order: dict) -> str:
     """
-    Generate LLM prompt for order status from JSON using template in messages.json.
+    Get order status and other knowk details from JSON.
     """
     order_json = json.dumps(order, ensure_ascii=False, indent=2)
 
-    # ---- Safely embed JSON FAQ in system prompt ----
+    # ---- Safely embed JSON Order Details ----
     # Escape braces so LangChain does NOT interpret as variables
-    order_json_escaped = order_json.replace("{", "{{").replace("}", "}}")
-    return config.MESSAGES["order_prompt_template"].format(
-        order_id=order_id, order_json=order_json_escaped
-    )
+    order_details_json_escaped = order_json.replace("{", "{{").replace("}", "}}")
+
+    return order_details_json_escaped
